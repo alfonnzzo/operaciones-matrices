@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Matrices — Versión Node.js</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f3;
+      color: #2c2c2a;
+      padding: 2rem;
+    }
+    h1 { font-size: 1.4rem; font-weight: 500; margin-bottom: 0.4rem; }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 10px;
+      border-radius: 20px;
+      background: #E1F5EE;
+      color: #0F6E56;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: #fff;
+      border: 0.5px solid #d3d1c7;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .card h2 { font-size: 1rem; font-weight: 500; margin-bottom: 1rem; color: #444441; }
+    .row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    label { font-size: 14px; color: #5f5e5a; }
+    input[type="number"] {
+      width: 70px; padding: 6px 10px;
+      border: 0.5px solid #b4b2a9; border-radius: 8px;
+      font-size: 14px; background: #fff; color: #2c2c2a;
+    }
+    input[type="number"]:focus {
+      outline: none; border-color: #1D9E75;
+      box-shadow: 0 0 0 3px #E1F5EE;
+    }
+    button {
+      padding: 8px 20px; border: 0.5px solid #b4b2a9;
+      border-radius: 8px; background: #fff; color: #2c2c2a;
+      font-size: 14px; cursor: pointer;
+    }
+    button:hover { background: #f1efe8; }
+    button.primary { background: #0F6E56; color: #fff; border-color: #0F6E56; }
+    button.primary:hover { background: #085041; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .matrices-container { display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .matrix-block h3 { font-size: 13px; font-weight: 500; margin-bottom: 8px; color: #0F6E56; }
+    .matrix-grid { display: grid; gap: 4px; }
+    .matrix-grid input {
+      width: 56px; height: 40px; text-align: center;
+      border: 0.5px solid #b4b2a9; border-radius: 6px;
+      font-size: 14px; padding: 0;
+    }
+    .matrix-grid input:focus {
+      outline: none; border-color: #1D9E75;
+      box-shadow: 0 0 0 3px #E1F5EE;
+    }
+    .matrix-grid input.error { border-color: #E24B4A; background: #FCEBEB; }
+    .op-selector { display: flex; gap: 8px; max-width: 300px; }
+    .op-selector button { flex: 1; }
+    .op-selector button.active { background: #0F6E56; color: #fff; border-color: #0F6E56; }
+    .result-grid { display: grid; gap: 4px; }
+    .result-cell {
+      width: 56px; height: 40px; display: flex;
+      align-items: center; justify-content: center;
+      background: #E1F5EE; border: 0.5px solid #5DCAA5;
+      border-radius: 6px; font-size: 14px; font-weight: 500; color: #085041;
+    }
+    .error-msg {
+      font-size: 13px; color: #A32D2D; margin-top: 8px;
+      padding: 8px 12px; background: #FCEBEB;
+      border-radius: 8px; border-left: 3px solid #E24B4A;
+    }
+    .server-tag {
+      font-size: 11px; color: #0F6E56; margin-top: 8px;
+      padding: 4px 10px; background: #E1F5EE;
+      border-radius: 6px; display: inline-block;
+    }
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid #fff; border-top-color: transparent;
+      border-radius: 50%; animation: spin 0.6s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .sym { font-size: 1.5rem; color: #888780; display: flex; align-items: center; padding-top: 24px; }
+    #section-operacion, #section-resultado { display: none; }
+  </style>
+</head>
+<body>
+
+<h1>Operaciones con matrices</h1>
+<span class="badge">Versión cliente + Node.js — cálculo en el servidor</span>
+
+<div class="card">
+  <h2>1. Definir dimensiones</h2>
+  <div class="row">
+    <label>Filas:</label>
+    <input type="number" id="filas" min="1" max="6" value="2">
+    <label>Columnas:</label>
+    <input type="number" id="cols" min="1" max="6" value="2">
+    <button onclick="generarMatrices()">Generar matrices</button>
+  </div>
+  <div id="dim-error" class="error-msg" style="display:none;"></div>
+</div>
+
+<div class="card" id="section-matrices" style="display:none;">
+  <h2>2. Cargar valores</h2>
+  <div class="matrices-container">
+    <div class="matrix-block"><h3>Matriz A</h3><div class="matrix-grid" id="grid-a"></div></div>
+    <div class="sym">+/×</div>
+    <div class="matrix-block"><h3>Matriz B</h3><div class="matrix-grid" id="grid-b"></div></div>
+  </div>
+</div>
+
+<div class="card" id="section-operacion">
+  <h2>3. Elegir operación</h2>
+  <div class="op-selector">
+    <button id="btn-suma" class="active" onclick="setOp('suma')">Suma</button>
+    <button id="btn-mult" onclick="setOp('multiplicacion')">Multiplicación</button>
+  </div>
+  <div style="margin-top:1rem;">
+    <button class="primary" id="btn-calcular" onclick="calcular()">Calcular →</button>
+  </div>
+  <div id="op-error" class="error-msg" style="display:none;"></div>
+</div>
+
+<div class="card" id="section-resultado">
+  <h2>4. Resultado</h2>
+  <div class="matrices-container" id="resultado-container"></div>
+  <span class="server-tag">Calculado por el servidor Node.js</span>
+</div>
+
+<script>
+  let filas = 2, cols = 2, operacion = 'suma';
+
+  function generarMatrices() {
+    const f = parseInt(document.getElementById('filas').value);
+    const c = parseInt(document.getElementById('cols').value);
+    const errDiv = document.getElementById('dim-error');
+    if (!f || !c || f < 1 || c < 1 || f > 6 || c > 6) {
+      errDiv.textContent = 'Las dimensiones deben ser números entre 1 y 6.';
+      errDiv.style.display = 'block';
+      return;
+    }
+    errDiv.style.display = 'none';
+    filas = f; cols = c;
+    construirGrid('grid-a', f, c, 'a');
+    construirGrid('grid-b', f, c, 'b');
+    document.getElementById('section-matrices').style.display = 'block';
+    document.getElementById('section-operacion').style.display = 'block';
+    document.getElementById('section-resultado').style.display = 'none';
+  }
+
+  function construirGrid(id, f, c, prefijo) {
+    const grid = document.getElementById(id);
+    grid.style.gridTemplateColumns = `repeat(${c}, 56px)`;
+    grid.innerHTML = '';
+    for (let i = 0; i < f; i++)
+      for (let j = 0; j < c; j++) {
+        const inp = document.createElement('input');
+        inp.type = 'number'; inp.id = `${prefijo}_${i}_${j}`;
+        inp.placeholder = '0'; inp.step = 'any';
+        grid.appendChild(inp);
+      }
+  }
+
+  function setOp(op) {
+    operacion = op;
+    document.getElementById('btn-suma').classList.toggle('active', op === 'suma');
+    document.getElementById('btn-mult').classList.toggle('active', op === 'multiplicacion');
+  }
+
+  function leerMatriz(prefijo, f, c) {
+    const mat = []; let errores = false;
+    for (let i = 0; i < f; i++) {
+      mat[i] = [];
+      for (let j = 0; j < c; j++) {
+        const inp = document.getElementById(`${prefijo}_${i}_${j}`);
+        const val = inp.value.trim();
+        if (val === '' || isNaN(Number(val))) { inp.classList.add('error'); errores = true; }
+        else { inp.classList.remove('error'); mat[i][j] = Number(val); }
+      }
+    }
+    return errores ? null : mat;
+  }
+
+  async function calcular() {
+    const errDiv = document.getElementById('op-error');
+    errDiv.style.display = 'none';
+    const matrizA = leerMatriz('a', filas, cols);
+    const matrizB = leerMatriz('b', filas, cols);
+    if (!matrizA || !matrizB) {
+      errDiv.textContent = 'Completá todos los campos con valores numéricos.';
+      errDiv.style.display = 'block';
+      return;
+    }
+    const btn = document.getElementById('btn-calcular');
+    btn.innerHTML = '<span class="spinner"></span>Calculando...';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch(`/api/${operacion}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matrizA, matrizB })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        errDiv.textContent = data.error || 'Error en el servidor.';
+        errDiv.style.display = 'block';
+        return;
+      }
+      mostrarResultado(data.resultado);
+    } catch (e) {
+      errDiv.textContent = 'No se pudo conectar con el servidor. ¿Está corriendo node server.js?';
+      errDiv.style.display = 'block';
+    } finally {
+      btn.innerHTML = 'Calcular →';
+      btn.disabled = false;
+    }
+  }
+
+  function mostrarResultado(mat) {
+    const opLabel = operacion === 'suma' ? 'A + B' : 'A × B';
+    const c = mat[0].length;
+    let html = `<div class="matrix-block"><h3>${opLabel}</h3><div class="result-grid" style="grid-template-columns:repeat(${c},56px);">`;
+    for (const fila of mat)
+      for (const val of fila)
+        html += `<div class="result-cell">${parseFloat(val.toFixed(4))}</div>`;
+    html += '</div></div>';
+    document.getElementById('resultado-container').innerHTML = html;
+    document.getElementById('section-resultado').style.display = 'block';
+  }
+</script>
+</body>
+</html>
